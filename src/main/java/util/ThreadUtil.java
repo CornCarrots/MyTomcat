@@ -1,8 +1,6 @@
 package util;
 
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * @Author: zerocoder
@@ -16,5 +14,10 @@ public class ThreadUtil {
 
     public static void run(Runnable r){
         threadPool.execute(r);
+    }
+
+    public static Object runSync(Callable c) throws ExecutionException, InterruptedException {
+        Future future = threadPool.submit(c);
+        return future.get();
     }
 }

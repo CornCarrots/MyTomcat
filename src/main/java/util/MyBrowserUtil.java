@@ -50,7 +50,7 @@ public class MyBrowserUtil {
      * @param url
      * @return
      */
-    private static byte[] getConnectionBytes(String url){
+    public static byte[] getConnectionBytes(String url){
         return getConnectionBytes(url, false);
     }
 
@@ -83,7 +83,7 @@ public class MyBrowserUtil {
      * @param url
      * @return
      */
-    private static String getHttpString(String url){
+    public static String getHttpString(String url){
         return getHttpString(url, false);
     }
 
@@ -124,7 +124,7 @@ public class MyBrowserUtil {
             // 请求方式+协议
             String path = urls.getPath();
             if (StrUtil.isEmpty(path)){
-                path = "/";
+                path = Constant.SEPARATOR;
             }
             String firstLine = "GET " + path + " HTTP/1.1\r\n";
             builder.append(firstLine);
@@ -149,7 +149,7 @@ public class MyBrowserUtil {
             printWriter.println(builder);
             // 获取响应
             InputStream inputStream = client.getInputStream();
-            result = readBytes(inputStream);
+            result = readBytes(inputStream, true);
             // 关闭连接
             client.close();
         } catch (Exception e) {
@@ -159,17 +159,29 @@ public class MyBrowserUtil {
         return result;
     }
 
-    public static byte[] readBytes(InputStream inputStream) throws IOException{
+    public static byte[] readBytes(InputStream inputStream, boolean isFully) throws IOException{
         int size = 1024;
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         byte[] buffer = new byte[size];
         int len;
         while ((len = inputStream.read(buffer)) > 0){
             outputStream.write(buffer, 0, len);
-            if (len <= size){
+            // 读取完整的数据
+            // 类似一个请求 由于是长连接的，就不需要一次性读取完整数据
+            if (!isFully && len <= size){
                 break;
             }
         }
+//        while (true){
+//            len = inputStream.read(buffer);
+//            if (-1 == len){
+//                break;
+//            }
+//            outputStream.write(buffer, 0, len);
+//            if (!isFully && len <= size){
+//                break;
+//            }
+//        }
         return outputStream.toByteArray();
     }
 

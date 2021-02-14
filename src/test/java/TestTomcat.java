@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  */
 
 public class TestTomcat {
-    private static int port = 10086;
+    private static int port = 8087;
     private static String ip = "127.0.0.1";
 
     @BeforeClass
@@ -57,8 +57,58 @@ public class TestTomcat {
         Assert.assertTrue(intervalMs < 3000);
     }
 
+    @Test
+    public void testWeb(){
+        String html = getConnectionStr("/demo/index.html");
+        System.out.println(html);
+        Assert.assertEquals(html, "Hello Demo!");
+    }
+
+    @Test
+    public void testWeb2(){
+        String html = getConnectionStr("/a/index.html");
+        System.out.println(html);
+        Assert.assertEquals(html, "Hello Demo 2!");
+    }
+
+    @Test
+    public void testWeb3(){
+        String html = getConnectionStr("/a/b/index.html");
+        System.out.println(html);
+        Assert.assertEquals(html, "Hello Demo 3!");
+    }
+
+    @Test
+    public void testMimeType(){
+        String html = getHttpStr("/a/test.txt");
+        System.out.println(html);
+        containAssert(html, "Content-Type: text/plain");
+    }
+
+    @Test
+    public void testPNG(){
+        byte[] bytes = getConnectionBytes("/a/test.jpg");
+        System.out.println(bytes.length);
+        Assert.assertEquals(35241, bytes.length);
+    }
+
+    private void containAssert(String html, String string){
+        boolean any = StrUtil.containsAny(html, string);
+        Assert.assertTrue(any);
+    }
+
     private String getConnectionStr(String url){
         url = StrUtil.format("http://{}:{}{}", ip, port, url);
         return MyBrowserUtil.getConnectionString(url);
+    }
+
+    private byte[] getConnectionBytes(String url){
+        url = StrUtil.format("http://{}:{}{}", ip, port, url);
+        return MyBrowserUtil.getConnectionBytes(url);
+    }
+
+    private String getHttpStr(String url){
+        url = StrUtil.format("http://{}:{}{}", ip, port, url);
+        return MyBrowserUtil.getHttpString(url);
     }
 }
