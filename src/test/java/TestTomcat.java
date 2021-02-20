@@ -79,6 +79,13 @@ public class TestTomcat {
     }
 
     @Test
+    public void testJavaweb(){
+        String html = getConnectionStr("/javaweb/hello");
+        System.out.println(html);
+        Assert.assertEquals(html, "Hello javaweb");
+    }
+
+    @Test
     public void testMimeType(){
         String html = getHttpStr("/a/test.txt");
         System.out.println(html);
@@ -90,6 +97,13 @@ public class TestTomcat {
         byte[] bytes = getConnectionBytes("/a/test.jpg");
         System.out.println(bytes.length);
         Assert.assertEquals(35241, bytes.length);
+    }
+
+    @Test
+    public void testServlet(){
+        String html = getConnectionStr("/j2ee/hello");
+        System.out.println(html);
+        Assert.assertEquals(html, "Hello Servlet");
     }
 
     private void containAssert(String html, String string){

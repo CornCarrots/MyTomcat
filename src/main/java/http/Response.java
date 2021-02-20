@@ -1,5 +1,7 @@
 package http;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
@@ -11,7 +13,7 @@ import java.util.Arrays;
  * @Date: 2021/2/12 16:14
  */
 
-public class Response {
+public class Response extends BaseResponse {
     private StringWriter stringWriter;
 
     private PrintWriter printWriter;
@@ -37,11 +39,11 @@ public class Response {
     }
 
     public static Response success(){
-        return new Response(200, "OK");
+        return new Response(HttpServletResponse.SC_OK, "OK");
     }
 
     public static Response notFound(String filename){
-        Response res =  new Response(404, "Not Found");
+        Response res =  new Response(HttpServletResponse.SC_NOT_FOUND, "Not Found");
         String html = "<html>\n" +
                 "\t<head>\n" +
                 "        <meta charset=\"UTF-8\">\n" +
@@ -93,8 +95,8 @@ public class Response {
         return res;
     }
 
-    public static Response error(Exception e){
-        Response res =  new Response(500, "Server error");
+    public static Response error(String e){
+        Response res =  new Response(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Server error");
         String html = "<html>\n" +
                 "\t<head>\n" +
                 "        <meta charset=\"UTF-8\">\n" +
@@ -135,7 +137,7 @@ public class Response {
                 "\t\t<div class=\"container\">\n" +
                 "\t\t\t<div class=\"content\">\n" +
                 "\t\t\t\t<div class=\"title\">500 很抱歉，服务器出现问题了！</div>\n" +
-                "\t\t\t\t<div>错误：" + e.getMessage() +
+                "\t\t\t\t<div>错误：" + e +
                 "</div>\n" +
                 "\t\t\t</div>\n" +
                 "\t\t</div>\n" +
@@ -151,9 +153,11 @@ public class Response {
     }
 
     public byte[] getBody(){
+        if (this.body == null){
+            String content = stringWriter.toString();
+            return content.getBytes(StandardCharsets.UTF_8);
+        }
         return this.body;
-//        String content = stringWriter.toString();
-//        return content.getBytes(StandardCharsets.UTF_8);
     }
 
     public Integer getCode() {
@@ -194,5 +198,20 @@ public class Response {
                 ", desc='" + desc + '\'' +
                 ", body=" + Arrays.toString(body) +
                 '}';
+    }
+
+    @Override
+    public PrintWriter getWriter() throws IOException {
+        return printWriter;
+    }
+
+    @Override
+    public int getStatus() {
+        return code;
+    }
+
+    @Override
+    public void setStatus(int status) {
+        this.code = status;
     }
 }

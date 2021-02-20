@@ -37,7 +37,12 @@ public class Constant {
      */
     public static final File SERVER_XML = new File(CONFIG_FOLDER, "server.xml");
 
+    /**
+     * web.xml路径
+     */
     public static final File WEB_XML = new File(CONFIG_FOLDER, "web.xml");
+
+    public static final File CONTEXT_XML = new File(CONFIG_FOLDER, "context.xml");
 
     /**
      * 分隔符

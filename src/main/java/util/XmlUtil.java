@@ -4,16 +4,14 @@ import catalina.*;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
+import exception.WebConfigDuplicatedException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @Author: zerocoder
@@ -26,9 +24,13 @@ public class XmlUtil {
 
     private static final String webXmlPath = FileUtil.readUtf8String(Constant.WEB_XML);
 
+    private static final String contextXmlPath = FileUtil.readUtf8String(Constant.CONTEXT_XML);
+
     private static Document serverDocument = Jsoup.parse(serverXmlPath);
 
     private static Document webDocument = Jsoup.parse(webXmlPath);
+
+    private static Document contextDocument = Jsoup.parse(contextXmlPath);
 
     public static Map<String, String> mimeTypeMapping = new HashMap<>();
 
@@ -126,5 +128,56 @@ public class XmlUtil {
             String mimeType = element.select("mime-type").text();
             mimeTypeMapping.put(extension, mimeType);
         }
+    }
+
+    public static String getWatchedResource(){
+        try {
+            Elements watchedResource = contextDocument.select("WatchedResource");
+            return  watchedResource.text();
+        }catch (Exception e){
+            e.printStackTrace();
+            return "WEB-INF/web.xml";
+        }
+    }
+
+    public static void parseServletMapping(Document webInfDocument, Map<String, String> urlServletClass,Map<String, String> urlServletName, Map<String, String> servletNameClass){
+        Elements urlPatternElements = webInfDocument.select("servlet-mapping url-pattern");
+        for (Element urlPatternElement: urlPatternElements) {
+            String urlPattern = urlPatternElement.text();
+            Element servletNameElement = urlPatternElements.parents().select("servlet-name").first();
+            String servletName = servletNameElement.text();
+            urlServletName.put(urlPattern, servletName);
+        }
+        Elements servletNameElements = webInfDocument.select("servlet servlet-name");
+        for (Element servletNameElement: servletNameElements) {
+            String servletName = servletNameElement.text();
+            Element servletClassElement = urlPatternElements.parents().select("servlet-class").first();
+            String servletClass = servletClassElement.text();
+            servletNameClass.put(servletName, servletClass);
+        }
+        Set<String> urls = urlServletName.keySet();
+        for (String url: urls) {
+            String servletName = urlServletName.get(url);
+            String servletClass = servletNameClass.get(servletName);
+            urlServletClass.put(url, servletClass);
+        }
+    }
+
+    public static void checkDuplicated(Document webInfDocument, String mapping, String desc) throws WebConfigDuplicatedException {
+        Elements elements = webInfDocument.select(mapping);
+        Set<String> contents = new HashSet<>();
+        for (Element element: elements) {
+            if (!contents.contains(element.text())) {
+                contents.add(element.text());
+            }else {
+                throw new WebConfigDuplicatedException(StrUtil.format(desc, element.text()));
+            }
+        }
+    }
+
+    public static void checkDuplicated(Document webInfDocument) throws WebConfigDuplicatedException {
+        checkDuplicated(webInfDocument, "servlet-mapping url-pattern", "servlet url:{} 重复");
+        checkDuplicated(webInfDocument, "servlet servlet-name", "servlet name:{} 重复");
+        checkDuplicated(webInfDocument, "servlet servlet-class", "servlet class:{} 重复");
     }
 }

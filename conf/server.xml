@@ -5,6 +5,7 @@
             <Host name="localhost">
                 <Context path="/" docBase="E:\JavaProjects\MyTomcat\webapps\ROOT" />
                 <Context path="/a" docBase="E:\JavaProjects\MyTomcat\webapps\a" />
+                <Context path="/javaweb" docBase="E:\JavaProjects\javaweb\web" reloadable="true"/>
             </Host>
         </Engine>
         <Connector port="8086"></Connector>

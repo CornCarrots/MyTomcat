@@ -16,7 +16,7 @@ import java.nio.charset.StandardCharsets;
  * @Date: 2021/2/12 12:57
  */
 
-public class Request {
+public class Request extends BaseRequest{
     private String requestStr;
 
     private String uri;
@@ -24,6 +24,8 @@ public class Request {
     private Socket socket;
 
     private Context context;
+
+    private String method;
 
     private Connector connector;
 
@@ -34,8 +36,9 @@ public class Request {
         if (StrUtil.isEmpty(requestStr)){
             return;
         }
-        handler();
+        parseUri();
         parseContext();
+        parseMethod();
         if (context != null && !context.getPath().equals(Constant.SEPARATOR)){
             uri = StrUtil.removePrefix(uri, context.getPath());
             if (StrUtil.isEmpty(uri)){
@@ -50,7 +53,7 @@ public class Request {
         requestStr = new String(bytes, StandardCharsets.UTF_8);
     }
 
-    private void handler(){
+    private void parseUri(){
         uri = StrUtil.subBetween(requestStr, " ", " ");
         if (StrUtil.contains(uri, '?')){
             uri = StrUtil.subBefore(uri, "?", false);
@@ -76,12 +79,10 @@ public class Request {
         if (context == null){
             context = engine.getDefaultHost().getContext(Constant.SEPARATOR);
         }
-//        if (context == null){
-//            Service service = server.getService();
-//            Engine engine = service.getEngine();
-//            Host host = engine.getDefaultHost();
-//            context = host.getContext(path);
-//        }
+    }
+
+    private void parseMethod(){
+        method = StrUtil.subBefore(requestStr, " ", false);
     }
 
     public String getRequestStr() {
@@ -94,5 +95,10 @@ public class Request {
 
     public Context getContext() {
         return context;
+    }
+
+    @Override
+    public String getMethod() {
+        return method;
     }
 }
