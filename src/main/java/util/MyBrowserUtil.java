@@ -45,6 +45,10 @@ public class MyBrowserUtil {
         return new String(connectionBytes, StandardCharsets.UTF_8).trim();
     }
 
+    private static String getConnectionString(String url, Map<String, Object> params, boolean isGet){
+        return getConnectionBytes(url, params, isGet);
+    }
+
     /**
      * 二进制的HTTP响应内容
      * @param url
@@ -78,6 +82,10 @@ public class MyBrowserUtil {
         return Arrays.copyOfRange(response, index, response.length);
     }
 
+    //TODO
+    public static String getConnectionBytes(String url, Map<String, Object> params, boolean isGet){
+        return "";
+    }
     /**
      * 字符串的HTTP响应
      * @param url

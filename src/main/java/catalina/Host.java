@@ -78,8 +78,20 @@ public class Host {
             path = Constant.SEPARATOR + path;
         }
         String absolutePath = directory.getAbsolutePath();
-        Context context = new Context(path, absolutePath);
+        Context context = new Context(path, absolutePath, this, true);
         contextMap.put(path, context);
+    }
+
+    public void reload(Context context){
+        String docBase = context.getDocBase();
+        String path = context.getPath();
+        Boolean reloadable = context.getReloadable();
+        LogFactory.get().info("reloading context with path[{}] has started", path);
+        context.stop();
+        contextMap.remove(path);
+        Context newContext = new Context(path, docBase, this, reloadable);
+        contextMap.put(path, newContext);
+        LogFactory.get().info("reloading context with path[{}] has completed", path);
     }
 
     public String getName() {

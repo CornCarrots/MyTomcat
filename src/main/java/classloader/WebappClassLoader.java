@@ -44,4 +44,12 @@ public class WebappClassLoader extends URLClassLoader {
             e.printStackTrace();
         }
     }
+
+    public void stop(){
+        try {
+            close();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
 }

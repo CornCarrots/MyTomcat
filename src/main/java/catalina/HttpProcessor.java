@@ -37,7 +37,8 @@ public class HttpProcessor {
             String servletClass = context.getServletClassByUrl(uri);
             if (StrUtil.isNotEmpty(servletClass)){
                 Class<?> servletClazz = context.getClassLoader().loadClass(servletClass);
-                Object servlet = ReflectUtil.newInstance(servletClazz);
+//                Object servlet = ReflectUtil.newInstance(servletClazz);
+                Object servlet = context.getServletByPool(servletClazz);
                 ReflectUtil.invoke(servlet, "service", request, response);
 //                InvokerServlet.newInstance().service(request, response);
 //                Object servlet = ReflectUtil.newInstance(servletClass);

@@ -82,7 +82,7 @@ public class TestTomcat {
     public void testJavaweb(){
         String html = getConnectionStr("/javaweb/hello");
         System.out.println(html);
-        Assert.assertEquals(html, "Hello javaweb");
+        Assert.assertEquals(html, "Hello javaweb!");
     }
 
     @Test

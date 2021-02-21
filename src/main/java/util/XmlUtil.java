@@ -49,7 +49,7 @@ public class XmlUtil {
             for (Element element: contextElements) {
                 String path = element.attr("path");
                 String docBase = element.attr("docBase");
-                result.add(new Context(path, docBase));
+                result.add(new Context(path, docBase, host, true));
             }
         }
         return result;
@@ -140,26 +140,45 @@ public class XmlUtil {
         }
     }
 
-    public static void parseServletMapping(Document webInfDocument, Map<String, String> urlServletClass,Map<String, String> urlServletName, Map<String, String> servletNameClass){
+    public static void parseServlet(Document webInfDocument, Map<String, String> urlServletClass,Map<String, String> urlServletName, Map<String, String> servletNameClass, Map<String, String> servletClassName, Map<String, Map<String, String>> servletClassParams, List<String> loadOnStartupServletClassNames){
         Elements urlPatternElements = webInfDocument.select("servlet-mapping url-pattern");
+        // servlet-mapping节点
         for (Element urlPatternElement: urlPatternElements) {
+            // url与servlet名字
             String urlPattern = urlPatternElement.text();
-            Element servletNameElement = urlPatternElements.parents().select("servlet-name").first();
+            Element servletNameElement = urlPatternElement.previousElementSibling();
             String servletName = servletNameElement.text();
             urlServletName.put(urlPattern, servletName);
-        }
-        Elements servletNameElements = webInfDocument.select("servlet servlet-name");
-        for (Element servletNameElement: servletNameElements) {
-            String servletName = servletNameElement.text();
-            Element servletClassElement = urlPatternElements.parents().select("servlet-class").first();
-            String servletClass = servletClassElement.text();
-            servletNameClass.put(servletName, servletClass);
-        }
-        Set<String> urls = urlServletName.keySet();
-        for (String url: urls) {
-            String servletName = urlServletName.get(url);
-            String servletClass = servletNameClass.get(servletName);
-            urlServletClass.put(url, servletClass);
+            Elements servletElements = urlPatternElements.parents().select("servlet");
+            // servlet节点
+            for (Element servlet: servletElements) {
+                Element servletNameEle = servlet.selectFirst("servlet-name");
+                if (servletNameEle.text().equals(servletName)){
+                    // 类路径
+                    Element servletClassEle = servlet.selectFirst("servlet-class");
+                    String servletClass = servletClassEle.text();
+                    servletNameClass.put(servletName, servletClass);
+                    servletClassName.put(servletClass, servletName);
+                    urlServletClass.put(urlPattern, servletClass);
+                    // 初始化参数
+                    Elements initParamEles = servlet.select("init-param");
+                    if (!initParamEles.isEmpty()){
+                        Map<String, String> initParamMap = new HashMap<>();
+                        for (Element initParamEle: initParamEles) {
+                            String name = initParamEle.select("param-name").text();
+                            String value = initParamEle.select("param-value").text();
+                            initParamMap.put(name, value);
+                        }
+                        servletClassParams.put(servletClass, initParamMap);
+                    }
+                    // 启动
+                    Element loadOnStartupEle = servlet.selectFirst("load-on-startup");
+                    if (loadOnStartupEle != null){
+                        loadOnStartupServletClassNames.add(servletClass);
+                    }
+                    break;
+                }
+            }
         }
     }
 

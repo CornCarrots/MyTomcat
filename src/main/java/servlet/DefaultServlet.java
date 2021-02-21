@@ -52,7 +52,7 @@ public class DefaultServlet extends HttpServlet {
             String fileName = StrUtil.removePrefix(uri, Constant.SEPARATOR);
             // 多应用
             File file;
-            if ((file = FileUtil.file(context.getDocBase(), fileName)).exists()) {
+            if ((file = FileUtil.file(request.getRealPath(fileName))).exists()) {
                 byte[] bytes = FileUtil.readBytes(file);
                 response.setBody(bytes);
                 // 多媒体类型

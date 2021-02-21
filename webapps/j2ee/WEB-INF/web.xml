@@ -3,6 +3,11 @@
     <servlet>
         <servlet-name>HelloServlet</servlet-name>
         <servlet-class>servlet.HelloServlet</servlet-class>
+        <init-param>
+            <param-name>author</param-name>
+            <param-value>zerocoder</param-value>
+        </init-param>
+        <load-on-startup>1</load-on-startup>
     </servlet>
 
     <servlet-mapping>
