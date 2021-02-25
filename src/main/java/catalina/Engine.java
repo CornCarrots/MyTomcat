@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.date.TimeInterval;
 import cn.hutool.log.LogFactory;
+import lombok.Data;
 import util.XmlUtil;
 
 import java.util.List;
@@ -15,7 +16,7 @@ import java.util.stream.Collectors;
  * @Description: 引擎
  * @Date: 2021/2/13 16:37
  */
-
+@Data
 public class Engine {
     private Host defaultHost;
 
@@ -42,13 +43,5 @@ public class Engine {
     public Host getHost(String hostName){
         Optional<Host> optionalHost = hosts.stream().filter(host -> host.getName().equals(hostName)).findFirst();
         return optionalHost.orElse(null);
-    }
-
-    public Host getDefaultHost() {
-        return defaultHost;
-    }
-
-    public Service getService() {
-        return service;
     }
 }

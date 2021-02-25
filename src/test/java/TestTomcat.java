@@ -106,6 +106,13 @@ public class TestTomcat {
         Assert.assertEquals(html, "Hello Servlet");
     }
 
+    @Test
+    public void testHead(){
+        String html = getConnectionStr("/test.html");
+        System.out.println(html);
+        Assert.assertEquals(html, "Hello Servlet");
+    }
+
     private void containAssert(String html, String string){
         boolean any = StrUtil.containsAny(html, string);
         Assert.assertTrue(any);

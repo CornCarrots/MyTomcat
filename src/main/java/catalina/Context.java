@@ -6,18 +6,21 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.date.TimeInterval;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.ReflectUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.log.LogFactory;
 import exception.WebConfigDuplicatedException;
 import http.ApplicationContext;
+import http.StandardFilterConfig;
 import http.StandardServletConfig;
+import lombok.Data;
+import org.apache.jasper.JspC;
+import org.apache.jasper.compiler.JspRuntimeContext;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import util.XmlUtil;
 import watcher.ContextFileWatcher;
 
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
+import javax.servlet.*;
 import javax.servlet.http.HttpServlet;
 import java.io.File;
 import java.util.*;
@@ -27,7 +30,7 @@ import java.util.*;
  * @Description: 上下文
  * @Date: 2021/2/12 23:35
  */
-
+@Data
 public class Context {
     /**
      * 相对路径
@@ -69,10 +72,7 @@ public class Context {
      */
     private ServletContext servletContext;
 
-    /**
-     * 保存应用各个servlet及其实例
-     */
-    private Map<Class<?>, HttpServlet> servletPool;
+    // -----------------------------servlet------------------------
 
     /**
      * url映射servlet类路径
@@ -101,6 +101,48 @@ public class Context {
 
     private List<String> loadOnStartupServletClassNames;
 
+    /**
+     * 保存应用各个servlet及其实例
+     */
+    private Map<Class<?>, HttpServlet> servletPool;
+
+    // -----------------------------servlet------------------------
+
+    // ----------------------------- filter ------------------------
+
+
+    /**
+     * url映射Filter类路径
+     */
+    private Map<String, List<String>> urlFilterClass;
+
+    /**
+     * url映射Filter名字
+     */
+    private Map<String, List<String>> urlFilterName;
+
+    /**
+     * Filter名字映射类路径
+     */
+    private Map<String, String> filterNameClass;
+
+    /**
+     * Filter类路径映射名字
+     */
+    private Map<String, String> filterClassName;
+
+    /**
+     * Filter类包含的初始化参数键值对
+     */
+    private Map<String, Map<String, String>> filterClassParams;
+
+    /**
+     * 保存应用各个Filter及其实例
+     */
+    private Map<String, Filter> filterPool;
+
+    // ----------------------------- filter ------------------------
+
     public Context(String path, String docBase, Host host, Boolean reloadable) {
         try {
             TimeInterval timer = DateUtil.timer();
@@ -108,13 +150,23 @@ public class Context {
             this.docBase = docBase;
             this.host = host;
             this.reloadable = reloadable;
+
             urlServletClass = new HashMap<>();
             urlServletName = new HashMap<>();
             servletNameClass = new HashMap<>();
             servletClassName = new HashMap<>();
             servletClassParams = new HashMap<>();
-            servletPool = new HashMap<>();
             loadOnStartupServletClassNames = new ArrayList<>();
+
+            urlFilterClass = new HashMap<>();
+            urlFilterName = new HashMap<>();
+            filterNameClass = new HashMap<>();
+            filterClassName = new HashMap<>();
+            filterClassParams = new HashMap<>();
+
+            servletPool = new HashMap<>();
+            filterPool = new HashMap<>();
+
             this.webXml = FileUtil.file(docBase, XmlUtil.getWatchedResource());
             ClassLoader commonClassLoader = Thread.currentThread().getContextClassLoader();
             this.classLoader = new WebappClassLoader(docBase, commonClassLoader);
@@ -124,7 +176,12 @@ public class Context {
                 contextFileWatcher = new ContextFileWatcher(this);
                 contextFileWatcher.start();
             }
+            // 初始化servlet
             loadOnStartUpServlets();
+            // 初始化filter
+            initFilterPool();
+            // 让jsp转换的java文件里的工厂有返回值
+            new JspRuntimeContext(servletContext, new JspC());
             LogFactory.get().info("[load Context] Deployment of web application path:{}, directory:{} has finished in {} ms", this.path, this.docBase, timer.intervalMs());
         } catch (Exception e) {
             e.printStackTrace();
@@ -132,6 +189,9 @@ public class Context {
         }
     }
 
+    /**
+     * 解析路径
+     */
     private void deploy(){
         if (!webXml.exists()){
             return;
@@ -140,22 +200,57 @@ public class Context {
             String xml = FileUtil.readUtf8String(webXml);
             Document document = Jsoup.parse(xml);
             XmlUtil.checkDuplicated(document);
-            XmlUtil.parseServlet(document, urlServletClass, urlServletName, servletNameClass, servletClassName, servletClassParams, loadOnStartupServletClassNames);
+            XmlUtil.parseServletAndFilter("servlet", document, urlServletClass, urlServletName, null, null, servletNameClass, servletClassName, servletClassParams, loadOnStartupServletClassNames);
+            XmlUtil.parseServletAndFilter("filter", document, null, null, urlFilterClass, urlFilterName, filterNameClass, filterClassName, filterClassParams, null);
         } catch (WebConfigDuplicatedException e) {
             e.printStackTrace();
         }
     }
 
+    /**
+     * 重新加载应用上下文
+     */
     public void reload(){
         host.reload(this);
     }
 
+    /**
+     * 停止加载应用上下文
+     * 1：停止类加载器
+     * 2：停止监听
+     * 3：销毁servlet类实例
+     */
     public void stop(){
         classLoader.stop();
         contextFileWatcher.stop();
         destroyServlets();
     }
 
+    /**
+     * 初始化过滤器
+     * @throws ClassNotFoundException
+     * @throws ServletException
+     */
+    private void initFilterPool() throws ClassNotFoundException, ServletException {
+        Set<String> filterClassNames = this.filterClassName.keySet();
+        for (String filterClassName: filterClassNames) {
+            Map<String, String> initParamsMap = servletClassParams.get(filterClassName);
+            String filterName = filterNameClass.get(filterClassName);
+            // 初始化配置
+            FilterConfig filterConfig = new StandardFilterConfig(getServletContext(), initParamsMap, filterName);
+            Class<?> filterClass = this.getClassLoader().loadClass(filterClassName);
+            Filter filter = (Filter) ReflectUtil.newInstance(filterClass);
+            filter.init(filterConfig);
+            filterPool.put(filterClassName, filter);
+        }
+    }
+
+    /**
+     * 从池加载servlet
+     * @param clazz
+     * @return
+     * @throws ServletException
+     */
     public synchronized HttpServlet getServletByPool(Class<?> clazz) throws ServletException {
         HttpServlet servlet = servletPool.get(clazz);
         if (servlet == null){
@@ -172,6 +267,9 @@ public class Context {
         return servlet;
     }
 
+    /**
+     * 销毁servlet
+     */
     private void destroyServlets(){
         Collection<HttpServlet> values = servletPool.values();
         for (HttpServlet servlet: values) {
@@ -179,6 +277,11 @@ public class Context {
         }
     }
 
+    /**
+     * 自动加载servlet
+     * @throws ClassNotFoundException
+     * @throws ServletException
+     */
     private void loadOnStartUpServlets() throws ClassNotFoundException, ServletException {
         if (CollectionUtil.isEmpty(loadOnStartupServletClassNames)){
             return;
@@ -189,27 +292,64 @@ public class Context {
         }
     }
 
-    public String getPath() {
-        return path;
-    }
-
-    public String getDocBase() {
-        return docBase;
-    }
-
+    /**
+     * 获取servlet类
+     * @param url
+     * @return
+     */
     public String getServletClassByUrl(String url){
         return urlServletClass.get(url);
     }
 
-    public ClassLoader getClassLoader() {
-        return classLoader;
+    /**
+     * 根据正则表达式匹配过滤器
+     * @param pattern
+     * @param uri
+     * @return
+     */
+    private boolean match(String pattern, String uri){
+        // 完全匹配
+        if (StrUtil.equals(pattern, uri)){
+            return true;
+        }
+        // /*模式
+        if (StrUtil.equals(pattern, "/")){
+            return true;
+        }
+        // 后缀名 /*.jsp
+        if (StrUtil.startWith(pattern, "/")){
+            String patternExt = StrUtil.subAfter(pattern, ".", false);
+            String uriExt = StrUtil.subAfter(uri, ".", false);
+            if (StrUtil.equals(patternExt, uriExt)){
+                return true;
+            }
+        }
+        return false;
     }
 
-    public Boolean getReloadable() {
-        return reloadable;
-    }
-
-    public ServletContext getServletContext() {
-        return servletContext;
+    /**
+     * 获取url匹配的所有过滤器
+     * @param uri
+     * @return
+     */
+    public List<Filter> listMatchFilters(String uri){
+        List<Filter> res = new ArrayList<>();
+        Set<String> matchPatterns = new HashSet<>();
+        Set<String> patterns = urlFilterClass.keySet();
+        Set<String> matchClass = new HashSet<>();
+        for (String pattern: patterns) {
+            if (match(pattern, uri)){
+                matchPatterns.add(pattern);
+            }
+        }
+        for (String pattern: matchPatterns) {
+            List<String> list = urlFilterClass.get(pattern);
+            matchClass.addAll(list);
+        }
+        for (String className: matchClass) {
+            Filter filter = filterPool.get(className);
+            res.add(filter);
+        }
+        return res;
     }
 }

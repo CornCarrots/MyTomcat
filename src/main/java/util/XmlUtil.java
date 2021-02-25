@@ -70,6 +70,10 @@ public class XmlUtil {
                 for (Element connector: connectorElements) {
                     Connector c = new Connector(service);
                     c.setPort(Convert.toInt(connector.attr("port")));
+                    c.setCompression(connector.attr("compression"));
+                    c.setNoCompressionUserAgents(connector.attr("noCompressionUserAgents"));
+                    c.setCompressableMimeType(connector.attr("compressableMimeType"));
+                    c.setCompressionMinSize(Convert.toInt(connector.attr("compressionMinSize")));
                     result.add(c);
                 }
             }
@@ -140,28 +144,50 @@ public class XmlUtil {
         }
     }
 
-    public static void parseServlet(Document webInfDocument, Map<String, String> urlServletClass,Map<String, String> urlServletName, Map<String, String> servletNameClass, Map<String, String> servletClassName, Map<String, Map<String, String>> servletClassParams, List<String> loadOnStartupServletClassNames){
-        Elements urlPatternElements = webInfDocument.select("servlet-mapping url-pattern");
-        // servlet-mapping节点
+    public static void parseServletAndFilter(String key, Document webInfDocument, Map<String, String> urlServletClass,Map<String, String> urlServletName, Map<String, List<String>> urlFilterClass,Map<String, List<String>> urlFilterName, Map<String, String> keyNameClass, Map<String, String> keyClassName, Map<String, Map<String, String>> keyClassParams, List<String> loadOnStartupServletClassNames){
+        Elements urlPatternElements = webInfDocument.select(key + "-mapping url-pattern");
+        // key-mapping节点
         for (Element urlPatternElement: urlPatternElements) {
-            // url与servlet名字
+            // url与key名字
             String urlPattern = urlPatternElement.text();
-            Element servletNameElement = urlPatternElement.previousElementSibling();
-            String servletName = servletNameElement.text();
-            urlServletName.put(urlPattern, servletName);
-            Elements servletElements = urlPatternElements.parents().select("servlet");
-            // servlet节点
-            for (Element servlet: servletElements) {
-                Element servletNameEle = servlet.selectFirst("servlet-name");
-                if (servletNameEle.text().equals(servletName)){
+            Element keyNameElement = urlPatternElement.previousElementSibling();
+            String keyName = keyNameElement.text();
+            if (key.equals("servlet")) {
+                urlServletName.put(urlPattern, keyName);
+            }else {
+                List<String> filterNamelist = urlFilterName.get(urlPattern);
+                if (filterNamelist != null){
+                    filterNamelist.add(keyName);
+                }else {
+                    filterNamelist = new ArrayList<>();
+                    filterNamelist.add(keyName);
+                    urlFilterName.put(urlPattern, filterNamelist);
+                }
+            }
+            Elements keyElements = urlPatternElements.parents().select(key);
+            // key节点
+            for (Element keyElement: keyElements) {
+                Element keyNameEle = keyElement.selectFirst(key + "-name");
+                if (keyNameEle.text().equals(keyName)){
                     // 类路径
-                    Element servletClassEle = servlet.selectFirst("servlet-class");
-                    String servletClass = servletClassEle.text();
-                    servletNameClass.put(servletName, servletClass);
-                    servletClassName.put(servletClass, servletName);
-                    urlServletClass.put(urlPattern, servletClass);
+                    Element keyClassEle = keyElement.selectFirst(key + "-class");
+                    String keyClass = keyClassEle.text();
+                    keyNameClass.put(keyName, keyClass);
+                    keyClassName.put(keyClass, keyName);
+                    if (key.equals("servlet")) {
+                        urlServletClass.put(urlPattern, keyClass);
+                    }else {
+                        List<String> filterClasslist = urlFilterClass.get(urlPattern);
+                        if (filterClasslist != null){
+                            filterClasslist.add(keyName);
+                        }else {
+                            filterClasslist = new ArrayList<>();
+                            filterClasslist.add(keyName);
+                            urlFilterClass.put(urlPattern, filterClasslist);
+                        }
+                    }
                     // 初始化参数
-                    Elements initParamEles = servlet.select("init-param");
+                    Elements initParamEles = keyElement.select("init-param");
                     if (!initParamEles.isEmpty()){
                         Map<String, String> initParamMap = new HashMap<>();
                         for (Element initParamEle: initParamEles) {
@@ -169,12 +195,12 @@ public class XmlUtil {
                             String value = initParamEle.select("param-value").text();
                             initParamMap.put(name, value);
                         }
-                        servletClassParams.put(servletClass, initParamMap);
+                        keyClassParams.put(keyClass, initParamMap);
                     }
                     // 启动
-                    Element loadOnStartupEle = servlet.selectFirst("load-on-startup");
-                    if (loadOnStartupEle != null){
-                        loadOnStartupServletClassNames.add(servletClass);
+                    Element loadOnStartupEle = keyElement.selectFirst("load-on-startup");
+                    if (loadOnStartupEle != null && loadOnStartupServletClassNames != null){
+                        loadOnStartupServletClassNames.add(keyClass);
                     }
                     break;
                 }

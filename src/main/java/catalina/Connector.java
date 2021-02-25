@@ -3,6 +3,7 @@ package catalina;
 import cn.hutool.log.LogFactory;
 import http.Request;
 import http.Response;
+import lombok.Data;
 import util.ThreadUtil;
 
 import java.net.ServerSocket;
@@ -14,12 +15,39 @@ import java.util.concurrent.Callable;
  * @Description: 连接器
  * @Date: 2021/2/14 15:03
  */
-
+@Data
 public class Connector implements Runnable{
 
+    /**
+     * 端口号
+     */
     private Integer port;
 
+    /**
+     * 包含的服务
+     */
     private Service service;
+
+    /**
+     * 是否压缩
+     */
+    private String compression;
+
+    /**
+     * 压缩限制
+     */
+    private Integer compressionMinSize;
+
+    /**
+     * 避免压缩的浏览器
+     */
+    private String noCompressionUserAgents;
+
+    /**
+     * 压缩媒体类型
+     *
+     */
+    private String compressableMimeType;
 
     public Connector(Service service) {
         this.service = service;
@@ -61,17 +89,5 @@ public class Connector implements Runnable{
             LogFactory.get().error(e);
             e.printStackTrace();
         }
-    }
-
-    public Integer getPort() {
-        return port;
-    }
-
-    public void setPort(Integer port) {
-        this.port = port;
-    }
-
-    public Service getService() {
-        return service;
     }
 }

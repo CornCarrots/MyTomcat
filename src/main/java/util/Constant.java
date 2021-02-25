@@ -15,7 +15,7 @@ public class Constant {
     /**
      * 响应头
      */
-    public static final String RESPONSE_HEAD = "HTTP/1.1 {} {}\r\n" + "Content-Type: {}\r\n\r\n";
+    public static final String RESPONSE_HEAD = "HTTP/1.1 {} {}\r\n" + "Content-Type: {}{}\r\n";
 
     /**
      * webapps路径
@@ -31,6 +31,10 @@ public class Constant {
      * 配置文件路径
      */
     public static final File CONFIG_FOLDER = new File(SystemUtil.get("user.dir"), "conf");
+    /**
+     * jsp转译后路径
+     */
+    public static final String WORK_FOLDER = SystemUtil.get("user.dir")+ File.separator + "work";
 
     /**
      * server.xml路径

@@ -1,18 +1,30 @@
 package http;
 
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.date.DateField;
+import cn.hutool.core.date.DateTime;
+import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.util.StrUtil;
+import lombok.Data;
+
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 
 /**
  * @Author: zerocoder
  * @Description: 响应体
  * @Date: 2021/2/12 16:14
  */
-
+@Data
 public class Response extends BaseResponse {
     private StringWriter stringWriter;
 
@@ -26,6 +38,10 @@ public class Response extends BaseResponse {
 
     private byte[] body;
 
+    private List<Cookie> cookies;
+
+    private String redirectPath;
+
     public Response(Integer code, String desc) {
         this("text/html", code, desc);
     }
@@ -34,6 +50,7 @@ public class Response extends BaseResponse {
         this.mimeType = mimeType;
         this.code = code;
         this.desc = desc;
+        this.cookies = new ArrayList<>();
         stringWriter = new StringWriter();
         printWriter = new PrintWriter(stringWriter);
     }
@@ -95,6 +112,10 @@ public class Response extends BaseResponse {
         return res;
     }
 
+    public static Response found(){
+        return new Response(HttpServletResponse.SC_FOUND, "FOUND");
+    }
+
     public static Response error(String e){
         Response res =  new Response(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Server error");
         String html = "<html>\n" +
@@ -148,44 +169,12 @@ public class Response extends BaseResponse {
         return res;
     }
 
-    public PrintWriter getPrintWriter() {
-        return printWriter;
-    }
-
     public byte[] getBody(){
         if (this.body == null){
             String content = stringWriter.toString();
             return content.getBytes(StandardCharsets.UTF_8);
         }
         return this.body;
-    }
-
-    public Integer getCode() {
-        return code;
-    }
-
-    public void setCode(Integer code) {
-        this.code = code;
-    }
-
-    public String getDesc() {
-        return desc;
-    }
-
-    public void setDesc(String desc) {
-        this.desc = desc;
-    }
-
-    public String getMimeType() {
-        return mimeType;
-    }
-
-    public void setMimeType(String mimeType) {
-        this.mimeType = mimeType;
-    }
-
-    public void setBody(byte[] body) {
-        this.body = body;
     }
 
     @Override
@@ -213,5 +202,56 @@ public class Response extends BaseResponse {
     @Override
     public void setStatus(int status) {
         this.code = status;
+    }
+
+    @Override
+    public void addCookie(Cookie cookie) {
+        cookies.add(cookie);
+    }
+
+    @Override
+    public void sendRedirect(String s) throws IOException {
+        this.redirectPath = s;
+    }
+
+    private static final SimpleDateFormat formater = new SimpleDateFormat("EEE,d MMM yyyy HH:mm:ss 'GMI'", Locale.ENGLISH);
+
+    public String getCookieHeader(){
+        if (CollUtil.isEmpty(cookies)){
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        for (Cookie cookie: cookies) {
+            // cookie信息
+            String name = cookie.getName();
+            String value = cookie.getValue();
+            int maxAge = cookie.getMaxAge();
+            String path = cookie.getPath();
+            // key-value
+            builder.append("\r\n")
+                    .append("Set-Cookie:")
+                    .append(name)
+                    .append("=")
+                    .append(value)
+                    .append(";");
+            // 过期时间
+            if (maxAge > 0){
+                DateTime expire = DateUtil.offset(DateUtil.date(), DateField.SECOND, maxAge);
+                builder.append("Expires=")
+                        .append(formater.format(expire))
+                        .append(";");
+            }
+            // 路径
+            if (StrUtil.isNotEmpty(path)){
+                builder.append("Path=")
+                        .append(path);
+            }
+        }
+        return builder.toString();
+    }
+
+    public void resetBuffer() {
+        //处理底层buffer，设置长度为0
+        this.stringWriter.getBuffer().setLength(0);
     }
 }

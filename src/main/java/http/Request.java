@@ -8,12 +8,16 @@ import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.util.URLUtil;
 import enums.HttpMethodEnum;
+import lombok.Data;
 import servlet.HelloServlet;
 import util.Constant;
 import util.MyBrowserUtil;
 
+import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletContext;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpSession;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
@@ -28,7 +32,7 @@ import java.util.*;
  * @Description: 请求体
  * @Date: 2021/2/12 12:57
  */
-
+@Data
 public class Request extends BaseRequest{
     /**
      * 完整请求体
@@ -75,11 +79,29 @@ public class Request extends BaseRequest{
      */
     private Map<String, String> headMap;
 
+    /**
+     * cookie
+     */
+    private Cookie[] cookies;
+
+    /**
+     * session
+     */
+    private HttpSession session;
+
+    /**
+     * 跳转
+     */
+    private boolean isForwarded;
+
+    private Map<String, Object> attributeMap;
+
     public Request(Socket socket, Connector connector) throws IOException {
         this.socket = socket;
         this.connector = connector;
         this.parameterMap = new HashMap<>();
         this.headMap = new HashMap<>();
+        this.attributeMap = new HashMap<>();
         preHandler();
         if (StrUtil.isEmpty(requestStr)){
             return;
@@ -89,6 +111,7 @@ public class Request extends BaseRequest{
         parseMethod();
         parseParameter();
         parseHeader();
+        parseCookies();
         if (context != null && !context.getPath().equals(Constant.SEPARATOR)){
             uri = StrUtil.removePrefix(uri, context.getPath());
             if (StrUtil.isEmpty(uri)){
@@ -173,27 +196,47 @@ public class Request extends BaseRequest{
         if (CollUtil.isEmpty(lines)){
             return;
         }
+        // 去掉开始的方法请求
+        lines.remove(0);
         for (String line: lines) {
             if (StrUtil.isEmpty(line)){
                 break;
             }
-            String[] segs = line.split(".");
+            String[] segs = line.split(":");
             String name = segs[0].toLowerCase();
             String value = segs[1];
             headMap.put(name, value);
         }
     }
 
-    public String getRequestStr() {
-        return requestStr;
+    private void parseCookies(){
+        List<Cookie> cookieList = new ArrayList<>();
+        String cookies = headMap.get("cookie");
+        if (StrUtil.isNotEmpty(cookies)){
+            String[] splits = StrUtil.split(cookies, ";");
+            for (String split: splits) {
+                if (StrUtil.isNotBlank(split)){
+                    String[] temp = StrUtil.split(split, "=");
+                    String name = temp[0].trim();
+                    String value = temp[1].trim();
+                    Cookie cookie = new Cookie(name, value);
+                    cookieList.add(cookie);
+                }
+            }
+        }
+        this.cookies = ArrayUtil.toArray(cookieList, Cookie.class);
     }
 
-    public String getUri() {
-        return uri;
-    }
-
-    public Context getContext() {
-        return context;
+    public String getJSessionIdFromCookie(){
+        String res = null;
+        if (ArrayUtil.isEmpty(cookies)){
+            return res;
+        }
+        Optional<String> jsessionid = Arrays.stream(cookies).filter(cookie -> cookie.getName().equals("JSESSIONID")).map(Cookie::getValue).findFirst();
+        if (jsessionid.isPresent()){
+            res = jsessionid.get();
+        }
+        return res;
     }
 
     @Override
@@ -331,5 +374,41 @@ public class Request extends BaseRequest{
         }
         builder.append(requestURI);
         return builder;
+    }
+
+    @Override
+    public Cookie[] getCookies() {
+        return cookies;
+    }
+
+    @Override
+    public HttpSession getSession() {
+        return session;
+    }
+
+    @Override
+    public RequestDispatcher getRequestDispatcher(String s) {
+        return new ApplicationRequestDispatcher(uri);
+    }
+
+    @Override
+    public Object getAttribute(String s) {
+        return attributeMap.get(s);
+    }
+
+    @Override
+    public Enumeration<String> getAttributeNames() {
+        Set<String> set = attributeMap.keySet();
+        return Collections.enumeration(set);
+    }
+
+    @Override
+    public void setAttribute(String s, Object o) {
+        attributeMap.put(s, o);
+    }
+
+    @Override
+    public void removeAttribute(String s) {
+        attributeMap.remove(s);
     }
 }

@@ -8,8 +8,13 @@
                 <Context path="/javaweb" docBase="E:\JavaProjects\javaweb\web" reloadable="true"/>
             </Host>
         </Engine>
-        <Connector port="8086"></Connector>
-        <Connector port="8087"></Connector>
-        <Connector port="8088"></Connector>
+        <Connector port="8086"
+                   compression="on"
+                   compressionMinSize="20"
+                   noCompressionUserAgents="gozilla traviata"
+                   compressableMimeType="text/html,text/xml,text/javascript,text/css,text/plain,text/json"
+        />
+        <Connector port="8087"/>
+        <Connector port="8088"/>
     </Service>
 </Server>

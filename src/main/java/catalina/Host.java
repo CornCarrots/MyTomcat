@@ -5,6 +5,7 @@ import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.date.TimeInterval;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.log.LogFactory;
+import lombok.Data;
 import util.Constant;
 import util.XmlUtil;
 
@@ -18,7 +19,7 @@ import java.util.Map;
  * @Description: 虚拟主机
  * @Date: 2021/2/13 12:15
  */
-
+@Data
 public class Host {
 
     private String name;
@@ -94,20 +95,7 @@ public class Host {
         LogFactory.get().info("reloading context with path[{}] has completed", path);
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public Map<String, Context> getContextMap() {
-        return contextMap;
-    }
-
-
     public Context getContext(String path){
         return contextMap.get(path);
-    }
-
-    public Engine getEngine() {
-        return engine;
     }
 }
