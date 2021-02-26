@@ -144,6 +144,14 @@ public class XmlUtil {
         }
     }
 
+    public static void parseListener(Document webInfDocument, List<String> listenerClasses){
+        Elements listenerClassEles = webInfDocument.select("listener listener-class");
+        for (Element listenerClassEle: listenerClassEles) {
+            String text = listenerClassEle.text();
+            listenerClasses.add(text);
+        }
+    }
+
     public static void parseServletAndFilter(String key, Document webInfDocument, Map<String, String> urlServletClass,Map<String, String> urlServletName, Map<String, List<String>> urlFilterClass,Map<String, List<String>> urlFilterName, Map<String, String> keyNameClass, Map<String, String> keyClassName, Map<String, Map<String, String>> keyClassParams, List<String> loadOnStartupServletClassNames){
         Elements urlPatternElements = webInfDocument.select(key + "-mapping url-pattern");
         // key-mapping节点

@@ -1,6 +1,7 @@
 package catalina;
 
 import classloader.WebappClassLoader;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.date.TimeInterval;
@@ -143,6 +144,10 @@ public class Context {
 
     // ----------------------------- filter ------------------------
 
+    private List<String> listenerClasses;
+
+    private List<ServletContextListener> listeners;
+
     public Context(String path, String docBase, Host host, Boolean reloadable) {
         try {
             TimeInterval timer = DateUtil.timer();
@@ -167,6 +172,8 @@ public class Context {
             servletPool = new HashMap<>();
             filterPool = new HashMap<>();
 
+            listeners = new ArrayList<>();
+            listenerClasses = new ArrayList<>();
             this.webXml = FileUtil.file(docBase, XmlUtil.getWatchedResource());
             ClassLoader commonClassLoader = Thread.currentThread().getContextClassLoader();
             this.classLoader = new WebappClassLoader(docBase, commonClassLoader);
@@ -182,6 +189,7 @@ public class Context {
             initFilterPool();
             // 让jsp转换的java文件里的工厂有返回值
             new JspRuntimeContext(servletContext, new JspC());
+            fireEvent("init");
             LogFactory.get().info("[load Context] Deployment of web application path:{}, directory:{} has finished in {} ms", this.path, this.docBase, timer.intervalMs());
         } catch (Exception e) {
             e.printStackTrace();
@@ -202,6 +210,7 @@ public class Context {
             XmlUtil.checkDuplicated(document);
             XmlUtil.parseServletAndFilter("servlet", document, urlServletClass, urlServletName, null, null, servletNameClass, servletClassName, servletClassParams, loadOnStartupServletClassNames);
             XmlUtil.parseServletAndFilter("filter", document, null, null, urlFilterClass, urlFilterName, filterNameClass, filterClassName, filterClassParams, null);
+            XmlUtil.parseListener(document, listenerClasses);
         } catch (WebConfigDuplicatedException e) {
             e.printStackTrace();
         }
@@ -224,6 +233,7 @@ public class Context {
         classLoader.stop();
         contextFileWatcher.stop();
         destroyServlets();
+        fireEvent("destroy");
     }
 
     /**
@@ -351,5 +361,39 @@ public class Context {
             res.add(filter);
         }
         return res;
+    }
+
+    /**
+     * 初始化监听器
+     */
+    private void initListener(){
+        if (CollUtil.isEmpty(listenerClasses)){
+            return;
+        }
+        listenerClasses.forEach(listenerClassName -> {
+            try {
+                Class<?> listenerClass = this.getClassLoader().loadClass(listenerClassName);
+                ServletContextListener listener = (ServletContextListener) listenerClass.newInstance();
+                listeners.add(listener);
+            }catch (Exception e){
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    /**
+     * 创建方法
+     * @param type
+     */
+    private void fireEvent(String type){
+        ServletContextEvent event = new ServletContextEvent(servletContext);
+        listeners.forEach(servletContextListener -> {
+            if (type.equals("init")){
+                servletContextListener.contextInitialized(event);
+            }
+            if (type.equals("destroy")){
+                servletContextListener.contextDestroyed(event);
+            }
+        });
     }
 }
