@@ -179,17 +179,19 @@ public class Context {
             this.classLoader = new WebappClassLoader(docBase, commonClassLoader);
             this.servletContext = new ApplicationContext(this);
             deploy();
+            // 初始化servlet
+            loadOnStartUpServlets();
+            // 让jsp转换的java文件里的工厂有返回值
+            new JspRuntimeContext(servletContext, new JspC());
+            // 初始化filter
+            initFilterPool();
+            // 应用context监听器
+            fireEvent("init");
+            // 热部署
             if (reloadable){
                 contextFileWatcher = new ContextFileWatcher(this);
                 contextFileWatcher.start();
             }
-            // 初始化servlet
-            loadOnStartUpServlets();
-            // 初始化filter
-            initFilterPool();
-            // 让jsp转换的java文件里的工厂有返回值
-            new JspRuntimeContext(servletContext, new JspC());
-            fireEvent("init");
             LogFactory.get().info("[load Context] Deployment of web application path:{}, directory:{} has finished in {} ms", this.path, this.docBase, timer.intervalMs());
         } catch (Exception e) {
             e.printStackTrace();
