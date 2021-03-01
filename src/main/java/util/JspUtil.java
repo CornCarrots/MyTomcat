@@ -87,7 +87,7 @@ public class JspUtil {
         return builder.toString();
     }
 
-    /** unicode转义 （\uXXXX格式表示的字符编码）
+    /** unicode转义
      * 用位运算提取出4部分并使用Character.forDigit转换成16进制数对应的字符.
      * @param character
      * @return

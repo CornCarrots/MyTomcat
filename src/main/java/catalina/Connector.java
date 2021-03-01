@@ -59,7 +59,7 @@ public class Connector implements Runnable{
 
     public void start(){
         LogFactory.get().info("Starting ProtocolHandler {http-bio-{}}", port);
-        new Thread(this).start();
+        ThreadUtil.run(this);
     }
 
     @Override
@@ -78,8 +78,7 @@ public class Connector implements Runnable{
                     };
                     Boolean result = (Boolean) ThreadUtil.runSync(callable);
                     LogFactory.get().info("send response:{}", result);
-                }
-                finally {
+                } finally {
                     if (socket != null && !socket.isClosed()) {
                         socket.close();
                     }
